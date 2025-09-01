@@ -4,20 +4,24 @@ import { useColorScheme } from 'nativewind';
 import { Appearance, View, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {checkUserExistsInSanity} from "@/lib/syncUserToSanity";
+
 
 export default function AuthRoutesLayout() {
     const { isSignedIn } = useAuth();
     const { user, isLoaded } = useUser();
     const { setColorScheme } = useColorScheme();
     const [themeReady, setThemeReady] = useState(false);
-    const [redirecting, setRedirecting] = useState(false);
     const router = useRouter();
 
     // 1. Apply theme based on user preference
     useEffect(() => {
         if (!isLoaded) return;
 
-        const preferredTheme = user?.unsafeMetadata?.theme as 'light' | 'dark' | 'system';
+        const preferredTheme = user?.unsafeMetadata?.theme as
+            | 'light'
+            | 'dark'
+            | 'system';
 
         if (preferredTheme === 'system') {
             const systemTheme = Appearance.getColorScheme();
@@ -29,14 +33,22 @@ export default function AuthRoutesLayout() {
         setThemeReady(true);
     }, [isLoaded]);
 
-    // 2. Handle redirection based on profile status
+    // 2. Handle redirection based on profile + Sanity status
     useEffect(() => {
         const checkProfileStatus = async () => {
-            if (!isLoaded || !themeReady || redirecting) return;
+            if (!isLoaded || !themeReady) return;
 
-            setRedirecting(true); // prevent infinite loop
+            if (isSignedIn && user) {
+                // 🔑 Check if user exists in Sanity
+                const exists = await checkUserExistsInSanity(user.id);
 
-            if (isSignedIn) {
+                if (!exists) {
+                    // If user is missing in Sanity → go to complete profile
+                    router.replace('/complete-profile');
+                    return;
+                }
+
+                // If user exists in Sanity, then check local profileCompleted flag
                 const completed = await AsyncStorage.getItem('profileCompleted');
                 if (completed === 'true') {
                     router.replace('/(tabs)/home');
@@ -49,7 +61,7 @@ export default function AuthRoutesLayout() {
         };
 
         checkProfileStatus();
-    }, [isLoaded, themeReady, isSignedIn, redirecting]);
+    }, [isLoaded, themeReady, isSignedIn]);
 
     // 3. Show loading screen while waiting
     if (!isLoaded || !themeReady) {

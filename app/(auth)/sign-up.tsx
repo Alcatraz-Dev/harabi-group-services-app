@@ -9,8 +9,7 @@ import { OtpInput } from 'react-native-otp-entry';
 import SignInWithGoogleButton from '@/components/ui/SignInWithGoogle';
 import {BlurView} from "expo-blur";
 import {Feather} from "@expo/vector-icons";
-import {syncUserToSanity} from "@/lib/syncUserToSanity";
-
+import { checkUserExistsInSanity, syncUserToSanity } from "@/lib/syncUserToSanity";
 
 export default function SignUpScreen() {
     const { signUp, setActive, isLoaded } = useSignUp();
@@ -44,23 +43,28 @@ export default function SignUpScreen() {
         try {
             const result = await signUp.attemptEmailAddressVerification({ code });
 
-            if (result.status === 'complete') {
+            if (result.status === "complete") {
                 await setActive({ session: result.createdSessionId });
 
-                // تأكد من تحميل المستخدم من Clerk
+                // Wait until Clerk's user is loaded
                 if (!isUserLoaded) {
                     await new Promise((resolve) => setTimeout(resolve, 1000));
                 }
 
-                // مزامنة المستخدم إلى Sanity
                 if (user) {
-                    await syncUserToSanity(user);
-                }
+                    const email = user.emailAddresses[0]?.emailAddress || "";
+                    const exists = await checkUserExistsInSanity(user.id, email);
 
-                router.replace('/(completeProfile)/complete-profile');
+                    if (!exists) {
+                        await syncUserToSanity(user);
+                        router.replace("/(completeProfile)/complete-profile");
+                    } else {
+                        router.replace("/(tabs)/home");
+                    }
+                }
             }
         } catch (err: any) {
-            Alert.alert('Fel!', err.errors?.[0]?.message || 'Ogiltig kod.');
+            Alert.alert("Fel!", err.errors?.[0]?.message || "Ogiltig kod.");
         } finally {
             setVerifying(false);
         }
