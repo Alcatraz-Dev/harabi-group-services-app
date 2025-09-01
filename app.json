@@ -1,22 +1,47 @@
 {
   "expo": {
-    "name": "home-service-app",
-    "slug": "home-service-app",
+    "name": "Harabi Group Services",
+    "slug": "harabi-group-services",
+    "scheme": "harabi-group-services",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "homeserviceapp",
+    "icon": "./assets/icons/adaptive-icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you.",
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification",
+          "fetch",
+          "remote-notification"
+        ],
+        "icons": {
+          "dark": "./assets/icons/ios-dark.png",
+          "light": "./assets/icons/ios-light.png",
+          "tinted": "./assets/icons/ios-tinted.png"
+        }
+      },
+      "bundleIdentifier": "com.alcatrazdev.harabigroupservices"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/icons/adaptive-icon.png",
+        "backgroundImage": "./assets/icons/adaptive-icon.png",
+        "monochromeImage": "./assets/icons/adaptive-icon.png",
+        "backgroundColor": "#ffffff",
+        "permissions": [
+          "NOTIFICATIONS",
+          "NOTIFICATIONS"
+        ]
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.alcatrazdev.harabigroupservices"
     },
     "web": {
       "bundler": "metro",
@@ -28,15 +53,67 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/icons/splash-icon-dark.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "image": "./assets/icons/splash-icon-light.png",
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow access to your photos to update your profile picture.",
+          "cameraPermission": "Allow access to your camera to take profile pictures"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icons/splash-icon-light.png",
+          "color": "#ffffff",
+          "defaultChannel": "default",
+          "enableBackgroundRemoteNotifications": false
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "expo": {
+      "extra": {
+        "eas": {
+          "projectId": "6f084bfe-2f83-4507-a7fc-04e12d697e22"
+        }
+      },
+      "updates": {
+        "fallbackToCacheTimeout": 0
+      }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "83329e3e-7a9d-4d55-adc5-d4a448d99188"
+      }
+    },
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/83329e3e-7a9d-4d55-adc5-d4a448d99188"
     }
+  },
+  "extra": {
+    "router": {},
+    "eas": {
+      "projectId": "83329e3e-7a9d-4d55-adc5-d4a448d99188"
+    }
+  },
+  "runtimeVersion": {
+    "policy": "sdkVersion"
+  },
+  "updates": {
+    "url": "https://u.expo.dev/83329e3e-7a9d-4d55-adc5-d4a448d99188"
   }
 }
