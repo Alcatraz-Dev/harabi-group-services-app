@@ -1,7 +1,7 @@
-import { useSignIn, useUser } from "@clerk/clerk-expo";
+import {useAuth, useSignIn, useUser} from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter, Link } from "expo-router";
-import React, { useState } from "react";
+import React, {useEffect, useState} from "react";
 import {
     View,
     Text,
@@ -21,7 +21,14 @@ WebBrowser.maybeCompleteAuthSession();
 export default function SignInScreen() {
     const { signIn, setActive, isLoaded } = useSignIn();
     const { user } = useUser();
+    const { isSignedIn } = useAuth();
     const router = useRouter();
+
+    useEffect(() => {
+        if (isSignedIn) {
+            router.replace('/(tabs)/home'); // navigate to home screen
+        }
+    }, [isSignedIn]);
 
     const [showPassword, setShowPassword] = useState(false);
     const [emailAddress, setEmailAddress] = useState("");

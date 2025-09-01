@@ -1,11 +1,11 @@
 import * as WebBrowser from "expo-web-browser";
-import { useOAuth, useUser } from "@clerk/clerk-expo";
-import { TouchableOpacity, Text, ActivityIndicator } from "react-native";
-import { useWarmUpBrowser } from "@/utils/useWarmUpBrowser";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { AntDesign } from "@expo/vector-icons";
-import { checkUserExistsInSanity, syncUserToSanity } from "@/lib/syncUserToSanity";
+import {useAuth, useOAuth, useUser} from "@clerk/clerk-expo";
+import {TouchableOpacity, Text, ActivityIndicator} from "react-native";
+import {useWarmUpBrowser} from "@/utils/useWarmUpBrowser";
+import {useRouter} from "expo-router";
+import React, {useEffect, useState} from "react";
+import {AntDesign} from "@expo/vector-icons";
+import {checkUserExistsInSanity, syncUserToSanity} from "@/lib/syncUserToSanity";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -13,18 +13,24 @@ export default function SignInWithGoogleButton() {
     useWarmUpBrowser();
 
     const router = useRouter();
-    const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
-    const { user, isLoaded: isUserLoaded } = useUser();
+    const {startOAuthFlow} = useOAuth({strategy: "oauth_google"});
+    const {user, isLoaded: isUserLoaded} = useUser();
 
     const [loading, setLoading] = useState(false);
+
+    const {isSignedIn} = useAuth();
+
+    useEffect(() => {
+        if (isSignedIn) router.replace('/(tabs)/home');
+    }, [isSignedIn]);
 
     const handlePress = async () => {
         setLoading(true);
         try {
-            const { createdSessionId, setActive } = await startOAuthFlow();
+            const {createdSessionId, setActive} = await startOAuthFlow();
 
             if (createdSessionId && setActive) {
-                await setActive({ session: createdSessionId });
+                await setActive({session: createdSessionId});
 
                 // wait for Clerk user to be ready
                 if (!isUserLoaded) {
@@ -61,10 +67,10 @@ export default function SignInWithGoogleButton() {
             className="bg-neutral-100 py-3 rounded-full mb-4 flex-row justify-center items-center"
         >
             {loading ? (
-                <ActivityIndicator color="#4F46E5" />
+                <ActivityIndicator color="#4F46E5"/>
             ) : (
                 <>
-                    <AntDesign name="google" size={20} color="black" style={{ marginRight: 8 }} />
+                    <AntDesign name="google" size={20} color="black" style={{marginRight: 8}}/>
                     <Text className="text-black text-center font-semibold text-lg">
                         Logga in med Google
                     </Text>

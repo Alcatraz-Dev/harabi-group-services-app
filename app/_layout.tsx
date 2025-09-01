@@ -38,6 +38,7 @@ function ThemeInitializer() {
         }
     }, [isLoaded, user]);
 
+
     useEffect(() => {
         if (!isLoaded) return;
 
@@ -86,6 +87,7 @@ export default function Layout() {
                             return SecureStore.setItemAsync(key, value);
                         },
                     }}
+
                 >
                     <View className="flex-1 bg-white dark:bg-black">
                         <ThemeInitializer/>

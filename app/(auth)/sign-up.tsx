@@ -21,6 +21,7 @@ export default function SignUpScreen() {
     const [verifying, setVerifying] = useState(false);
     const [showPassword, setShowPassword] = useState(false)
     const { user, isLoaded: isUserLoaded } = useUser();
+
     const handleSignUp = async () => {
         if (!isLoaded || !signUp || loading) return;
 
