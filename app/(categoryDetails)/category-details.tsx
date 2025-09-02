@@ -26,7 +26,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import ReviewModal from "@/components/ui/BottomSheetReview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {client} from "@/client";
-import {useAuth} from "@clerk/clerk-expo";
+import {useAuth, useUser} from "@clerk/clerk-expo";
 
 const CategoryDetails = () => {
     const {id, title, coverImage, description, providerId} = useLocalSearchParams();
@@ -123,14 +123,19 @@ const CategoryDetails = () => {
 
     // Current user
     const [currentUser, setCurrentUser] = useState<any>(null);
-    const {userId} = useAuth();
+    const { user } = useUser();
+
     useEffect(() => {
-        if (!userId) return;
+        if (!user) return;
+
+        const email = user.emailAddresses?.[0]?.emailAddress;
+        if (!email) return;
 
         const fetchUser = async () => {
             try {
-                const user = await client.fetch(
-                    `*[_type == "user" && clerkId == $userId][0]{
+                // Use lower-case email to avoid case mismatch
+                const result = await client.fetch(
+                    `*[_type == "user" && lower(email) == $email][0]{
           _id,
           fullName,
           firstName,
@@ -138,17 +143,16 @@ const CategoryDetails = () => {
           email,
           avatarUrl
         }`,
-                    {userId}
+                    { email: email.toLowerCase() }
                 );
-                setCurrentUser(user);
+                setCurrentUser(result);
             } catch (err) {
-                console.error(err);
+                console.error("Error fetching current user:", err);
             }
         };
 
         fetchUser();
-    }, [userId]);
-
+    }, [user?.id]); // dependency is Clerk user ID
     if (!provider) return <Text>Laddar...</Text>;
 
     const whatsappNumber = provider.whatsappNumber;

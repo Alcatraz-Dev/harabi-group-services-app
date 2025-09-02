@@ -14,7 +14,7 @@ import {
 import SignInWithGoogleButton from "@/components/ui/SignInWithGoogle";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
-import { checkUserExistsInSanity, syncUserToSanity } from "@/lib/syncUserToSanity";
+import {createUserInSanityFromClerk} from "@/lib/syncUserToSanity";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -56,14 +56,14 @@ export default function SignInScreen() {
                 }
 
                 if (user) {
-                    const exists = await checkUserExistsInSanity(user.id);
+                    // const exists = await checkUserExistsInSanity(user.id);
 
-                    if (!exists) {
-                        await syncUserToSanity(user);
+                    // if (!exists) {
+                        await createUserInSanityFromClerk(user.id)
                         router.replace("/(completeProfile)/complete-profile");
-                    } else {
-                        router.replace("/(tabs)/home");
-                    }
+                    // } else {
+                    //     router.replace("/(tabs)/home");
+                    // }
                 } else {
                     console.warn("User not ready after sign-in.");
                 }

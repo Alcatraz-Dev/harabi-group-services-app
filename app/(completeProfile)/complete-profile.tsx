@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import {useEffect, useState} from 'react';
 import {useRouter} from 'expo-router';
-import {useUser} from '@clerk/clerk-expo';
+import {useAuth, useUser} from '@clerk/clerk-expo';
 import {Picker} from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -21,6 +21,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useAppTheme} from '@/hooks/useTheme';
 import {client} from "@/client";
 import {BlurView} from "expo-blur";
+import {checkUserExistsInSanity, syncUserToSanity} from "@/lib/syncUserToSanity";
 
 export default function CompleteProfile() {
     const router = useRouter();
@@ -34,6 +35,22 @@ export default function CompleteProfile() {
     const [location, setLocation] = useState(cities[0].id);
     const [language, setLanguage] = useState(languages[0].code);
     const [referralCode, setReferralCode] = useState('');
+
+    useEffect(() => {
+        const checkAndCreateUser = async () => {
+
+            if (user) {
+                const email = user.emailAddresses[0]?.emailAddress || "";
+                const exists = await checkUserExistsInSanity(user.id, email);
+
+                if (!exists) {
+                    await syncUserToSanity(user);
+                }
+            }
+        };
+
+        checkAndCreateUser();
+    }, []);
     const handleSubmit = async () => {
         if (
             !firstName.trim() ||
@@ -58,7 +75,7 @@ export default function CompleteProfile() {
 
             const currentUserSanity = await client.fetch(
                 `*[_type == "user" && clerkId == $clerkId][0]`,
-                { clerkId: user.id }
+                {clerkId: user.id}
             );
 
             let points = 0;
@@ -68,7 +85,7 @@ export default function CompleteProfile() {
             if (referralCode.trim()) {
                 const referrer = await client.fetch(
                     `*[_type == "user" && referralCode == $referralCode][0]`,
-                    { referralCode: referralCode.trim() }
+                    {referralCode: referralCode.trim()}
                 );
 
                 if (referrer) {
@@ -78,8 +95,8 @@ export default function CompleteProfile() {
                     // (Optional) give points to referrer too
                     await client
                         .patch(referrer._id)
-                        .setIfMissing({ points: 0 })
-                        .inc({ points: 50 })
+                        .setIfMissing({points: 0})
+                        .inc({points: 50})
                         .commit();
                 } else {
                     Alert.alert('Fel!', 'Ogiltig referenskod.');
@@ -102,7 +119,30 @@ export default function CompleteProfile() {
                 language: languageCode
             };
 
-            await user.update({ unsafeMetadata: updatedMetadata });
+            try {
+                await user.update({
+                    unsafeMetadata: {
+                        fullName: `${firstName.trim()} ${lastName.trim()}`,
+                        firstName: firstName.trim(),
+                        lastName: lastName.trim(),
+                        userName: userNme.trim(),
+                        email: user.emailAddresses[0]?.emailAddress || '',
+                        avatarUrl: user.imageUrl,
+                        points,
+                        referralCode: currentUserSanity?.referralCode || '', // your user's own referral code
+                        referredBy: referredByUserId,
+                        phoneNumber: phoneNumber.trim(),
+                        location: cityName,
+                        language: languageCode
+                    },
+
+                });
+                // @ts-ignore
+                await user.updateMetadata(updatedMetadata);
+                console.log("✅ Clerk metadata updated");
+            } catch (metaError) {
+                console.error("❌ Failed to update Clerk metadata:", metaError);
+            }
             await handelUserUpdateInSanity(updatedMetadata);
             await AsyncStorage.setItem('completeProfile', 'true');
             router.replace('/(tabs)/home');
@@ -116,11 +156,11 @@ export default function CompleteProfile() {
         try {
             const sanityUser = await client.fetch(
                 `*[_type == "user" && clerkId == $userId][0]{_id}`,
-                { userId: user?.id }
+                {userId: user?.id}
             );
 
             if (sanityUser?._id) {
-                const updateData: any = { ...metadata };
+                const updateData: any = {...metadata};
 
                 if (metadata.referredBy) {
                     updateData.referredBy = {

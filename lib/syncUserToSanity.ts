@@ -1,17 +1,22 @@
 import { client } from "@/client";
 
 function generateReferralCode() {
-    return Math.random().toString(36).substring(2, 8).toUpperCase(); // 6-char code
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
 async function getUniqueReferralCode() {
     let code = generateReferralCode();
+    console.log("Generated referral code:", code);
+
     let exists = await client.fetch(
         `count(*[_type == "user" && referralCode == $code])`,
         { code }
     );
+    console.log("Code exists check:", exists);
+
     while (exists > 0) {
         code = generateReferralCode();
+        console.log("Regenerating code:", code);
         exists = await client.fetch(
             `count(*[_type == "user" && referralCode == $code])`,
             { code }
@@ -21,72 +26,80 @@ async function getUniqueReferralCode() {
 }
 
 export async function syncUserToSanity(user: any) {
-    console.log("syncUserToSanity called for user:", user.id);
+    console.log("🔍 Starting syncUserToSanity with user:", user?.id);
+
+    if (!user) {
+        console.log("❌ No user provided");
+        return;
+    }
 
     const email = user.emailAddresses[0]?.emailAddress || "";
+    console.log("User email:", email);
 
-    // Check if user exists by Clerk ID OR Email
-    const existingUser = await client.fetch(
-        `*[_type == "user" && (clerkId == $clerkId || email == $email)][0]`,
-        { clerkId: user.id, email }
-    );
+    try {
+        // Use the updated check function
+        const existingUser = await checkUserExistsInSanity(user.id, email);
 
-    if (!existingUser) {
-        let referralCode = user.publicMetadata?.referralCode || await getUniqueReferralCode();
+        if (!existingUser) {
+            console.log("🆕 Creating new user in Sanity...");
 
-        const newUser = {
-            _type: "user",
-            clerkId: user.id,
-            fullName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim(),
-            userName: user?.username,
-            firstName: user?.firstName,
-            lastName: user?.lastName,
-            email,
-            avatarUrl: user.imageUrl,
-            phoneNumber: user.phoneNumbers?.[0]?.phoneNumber || "",
-            referralCode,
-            points: 0,
-            location: "",
-            language: "",
-        };
+            const referralCode = await getUniqueReferralCode();
+            const referredBy = user.referredBy;
+            console.log("Using referral code:", referralCode);
 
-        const updatedMetadata = {
-            fullName: newUser.fullName,
-            firstName: newUser.firstName,
-            lastName: newUser.lastName,
-            userName: newUser.userName,
-            email: newUser.email,
-            avatarUrl: newUser.avatarUrl,
-            points: 0,
-            referralCode: newUser.referralCode,
-            phoneNumber: newUser.phoneNumber,
-            location: "",
-            language: "",
-        };
+            const newUser = {
+                _type: "user",
+                clerkId: user.id,
+                fullName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: email,
+                avatarUrl: user.imageUrl,
+                points: 0,
+                location: "",
+                language: "sv",
+                referralCode: referralCode,
+                referredBy: referredBy,
+            };
 
-        console.log("Creating user in Sanity:", newUser);
-        await client.create(newUser);
-        await user.updateMetadata({ publicMetadata: updatedMetadata });
-        console.log("User created successfully in Sanity");
-    } else {
-        console.log("User already exists in Sanity:", existingUser._id);
+            console.log("New user object:", JSON.stringify(newUser, null, 2));
 
-        // Optional: update Clerk metadata if missing
-        const updatedMetadata = {
-            fullName: existingUser.fullName,
-            firstName: existingUser.firstName,
-            lastName: existingUser.lastName,
-            userName: existingUser.userName,
-            email: existingUser.email,
-            avatarUrl: existingUser.avatarUrl,
-            referralCode: existingUser.referralCode,
-            phoneNumber: existingUser.phoneNumber,
-            points: existingUser.points || 0,
-            location: existingUser.location || "",
-            language: existingUser.language || "",
-        };
+            try {
+                const createdUser = await client.create(newUser);
+                console.log("✅ User created successfully in Sanity:", createdUser._id);
 
-        await user.updateMetadata({ publicMetadata: updatedMetadata });
+                // Update Clerk metadata
+                try {
+                    await user.update({
+                        unsafeMetadata: {
+                            fullName: newUser.fullName,
+                            firstName: newUser.firstName,
+                            lastName: newUser.lastName,
+                            email: newUser.email,
+                            avatarUrl: newUser.avatarUrl,
+                            location: "",
+                            language: "sv",
+                            points: "0",
+                            referralCode: referralCode,
+                            referredBy: referredBy,
+                        }
+                    });
+                    console.log("✅ Clerk metadata updated");
+                } catch (metaError) {
+                    console.error("❌ Failed to update Clerk metadata:", metaError);
+                }
+
+            } catch (createError) {
+                console.error("❌ Error creating user in Sanity:", createError);
+                throw createError;
+            }
+
+        } else {
+            console.log("ℹ️ User already exists in Sanity");
+        }
+    } catch (error) {
+        console.error("❌ Error in syncUserToSanity:", error);
+        throw error;
     }
 }
 
@@ -94,12 +107,35 @@ export async function checkUserExistsInSanity(
     clerkId?: string,
     email?: string
 ): Promise<boolean> {
+    console.log("🔍 Checking if user exists:", { clerkId, email });
+
     if (!clerkId && !email) return false;
 
-    const user = await client.fetch(
-        `*[_type == "user" && (clerkId == $clerkId || email == $email)][0]`,
-        { clerkId, email }
-    );
+    try {
+        // Build query based on available parameters
+        let query;
+        let params: any = {};
 
-    return !!user;
+        if (clerkId && email) {
+            query = `*[_type == "user" && (clerkId == $clerkId || email == $email)][0]`;
+            params = { clerkId, email };
+        } else if (clerkId) {
+            query = `*[_type == "user" && clerkId == $clerkId][0]`;
+            params = { clerkId };
+        } else if (email) {
+            query = `*[_type == "user" && email == $email][0]`;
+            params = { email };
+        } else {
+            return false;
+        }
+
+        console.log("Executing query:", query, "with params:", params);
+
+        const user = await client.fetch(query, params);
+        console.log("User exists check result:", !!user);
+        return !!user;
+    } catch (error) {
+        console.error("❌ Error in checkUserExistsInSanity:", error);
+        return false;
+    }
 }

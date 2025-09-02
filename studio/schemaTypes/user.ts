@@ -12,7 +12,7 @@ export const userType = defineType({
             title: 'Clerk ID',
             type: 'string',
             description: 'Unique ID from Clerk used to link auth account',
-            validation: Rule => Rule.required().error('Clerk ID is required'),
+            validation: Rule => Rule.required().error('Clerk ID is required')
         }),
         defineField({
             name: 'fullName',
