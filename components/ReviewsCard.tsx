@@ -1,48 +1,87 @@
-import { FlatList, View, Text, Image } from 'react-native';
+import { View, Text, Image, TouchableOpacity, Alert } from 'react-native';
 import { StarRatingDisplay } from 'react-native-star-rating-widget';
-import {reviews} from "@/constants/reviewsData";
-import {formatReviewDate} from "@/utils/dateFormatter"; // تأكد من استيرادك الصحيح
+import { formatReviewDate } from "@/utils/dateFormatter";
+import { Trash2 } from 'lucide-react-native';
+import { client } from "@/client";
 
+type Review = {
+    _id: string;
+    name: string;
+    avatar?: string;
+    date: string;
+    rating: number;
+    review: string;
+};
 
-export default function ReviewsCard() {
+type ReviewsCardProps = {
+    review: Review;
+    isLast?: boolean;
+    onDelete?: (id: string) => void; // callback to parent
+};
+
+export default function ReviewsCard({ review, isLast, onDelete }: ReviewsCardProps) {
+    const handleDelete = () => {
+        Alert.alert(
+            "Ta bort recension",
+            "Är du säker på att du vill ta bort denna recension?",
+            [
+                { text: "Avbryt", style: "cancel" },
+                { text: "Ta bort", style: "destructive", onPress: async () => {
+                        try {
+                            await client.delete(review._id);
+                            if (onDelete) onDelete(review._id); // notify parent
+                            Alert.alert("Borttagen", "Recensionen har tagits bort.");
+                        } catch (err) {
+                            console.error(err);
+                            Alert.alert("Fel", "Det gick inte att ta bort recensionen.");
+                        }
+                    }}
+            ]
+        );
+    };
+
     return (
-        <View className={''}>
-            <Text className="font-bold text-black dark:text-white mb-3 text-xl">Reviews</Text>
+        <View className="mb-4">
+            <View className="flex-row items-start gap-3">
+                {/* Avatar */}
+                <Image
+                    source={{ uri: review.avatar || 'https://avatar.iran.liara.run/public/boy' }}
+                    className="w-10 h-10 rounded-full mt-1.5"
+                />
 
-            <FlatList
-                data={reviews}
-                keyExtractor={(item) => item.id.toString()}
-                ItemSeparatorComponent={() => (
-                    <View className="h-[1px] bg-neutral-200 dark:bg-neutral-700 my-3" />
-                )}
-                renderItem={({ item }) => (
-                    <View className="flex-row items-start space-x-4 mb-1 gap-3">
-                        <Image
-                            source={{ uri: item.avatar }}
-                            className="w-10 h-10 rounded-full mt-1.5"
-                            accessibilityLabel={`${item.name} avatar`}
-                        />
-                        <View className="flex-1 space-y-1">
-                            <View className="flex-row justify-between items-center">
-                                <Text className="text-base font-bold text-black dark:text-white mx-1">{item.name}</Text>
-                                <Text className="text-xs text-gray-500 dark:text-gray-400">
-                                    {formatReviewDate(item.date)}
-                                </Text>
-                            </View>
-                            <StarRatingDisplay
-                                rating={item.rating}
-                                starSize={10}
-                                color="#FF9F00"
-                                starStyle={{ marginRight: 0 }}
-
-
-                            />
-                            <Text className="text-sm text-gray-700 dark:text-gray-300 pt-2">{item.review}</Text>
+                <View className="flex-1">
+                    {/* Header: Name + Date + Delete */}
+                    <View className="flex-row justify-between items-center mb-1">
+                        <Text className="text-base font-bold text-black dark:text-white">
+                            {review.name}
+                        </Text>
+                        <View className="flex-row items-center gap-2">
+                            <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                {formatReviewDate(review.date)}
+                            </Text>
+                            <TouchableOpacity onPress={handleDelete}>
+                                <Trash2 size={16} color={'red'} />
+                            </TouchableOpacity>
                         </View>
                     </View>
-                )}
-                scrollEnabled={false} // اجعلها true لو حبيت تكون قابلة للتمرير فقط للمراجعات
-            />
+
+                    {/* Rating */}
+                    <StarRatingDisplay
+                        rating={review.rating}
+                        starSize={14}
+                        color="#FF9F00"
+                        starStyle={{ marginRight: 0 }}
+                    />
+
+                    {/* Review text */}
+                    <Text className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+                        {review.review}
+                    </Text>
+                </View>
+            </View>
+
+            {/* Separator */}
+            {!isLast && <View className="h-[1px] bg-gray-300 dark:bg-gray-600 mt-4" />}
         </View>
     );
 }
