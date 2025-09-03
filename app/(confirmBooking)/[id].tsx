@@ -1,5 +1,6 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import {View, Text, TouchableOpacity, Alert} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ConfirmBooking() {
     const { id, date, place, startTime, endTime } = useLocalSearchParams<{
@@ -11,6 +12,29 @@ export default function ConfirmBooking() {
     }>();
 
     const router = useRouter();
+    const handleBooking = async () => {
+        try {
+            const newBooking = {
+                categoryId: id,
+                coverImage: "",
+                title: "",
+                bookedAt: new Date().toISOString(),
+                status: "in progress",
+                name: "Kundens Namn",
+                totalAmount: 250,
+            };
+
+            const existingData = await AsyncStorage.getItem("bookingList");
+            const existingList = existingData ? JSON.parse(existingData) : [];
+            const updatedList = [newBooking, ...existingList];
+
+            await AsyncStorage.setItem("bookingList", JSON.stringify(updatedList));
+            Alert.alert("Success", "Din bokning har sparats!");
+        } catch (error) {
+            console.error("Booking error:", error);
+            Alert.alert("Fel", "Det gick inte att spara bokningen.");
+        }
+    };
 
     return (
         <View className="flex-1 bg-white dark:bg-black p-6 justify-center items-center">

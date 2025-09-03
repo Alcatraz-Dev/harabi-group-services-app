@@ -24,7 +24,8 @@ const ReviewModal = ({visible, onClose, onSubmit}: ReviewModalProps) => {
     const [rating, setRating] = useState(0);
     const [reviewText, setReviewText] = useState('');
 
-    const handleSubmit = ( rating: number, reviewText: string) => {
+
+    const handleSubmit = (rating: number, reviewText: string) => {
         if (rating === 0 || reviewText.trim() === '') {
             Alert.alert('Fel', 'Vänligen fyll i både betyg och recension.');
             return;

@@ -3,6 +3,8 @@ import {StarRatingDisplay} from 'react-native-star-rating-widget';
 import {formatReviewDate} from "@/utils/dateFormatter";
 import {Trash2} from 'lucide-react-native';
 import {client} from "@/client";
+import {useUser} from "@clerk/clerk-expo";
+import {useEffect, useState} from "react";
 
 type Review = {
     _id: string;
@@ -11,6 +13,7 @@ type Review = {
     date: string;
     rating: number;
     review: string;
+    email: string;
 };
 
 type ReviewsCardProps = {
@@ -20,6 +23,41 @@ type ReviewsCardProps = {
 };
 
 export default function ReviewsCard({review, isLast, onDelete}: ReviewsCardProps) {
+    const [currentUser, setCurrentUser] = useState<any>(null);
+    const { user: clerkUser } = useUser();
+
+    useEffect(() => {
+        if (!clerkUser) return;
+
+        const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+        if (!email) return;
+
+        const fetchUser = async () => {
+            try {
+                // Use lower-case email to avoid case mismatch
+                const result = await client.fetch(
+                    `*[_type == "user" && lower(email) == $email][0]{
+                        _id,
+                        fullName,
+                        firstName,
+                        lastName,
+                        email,
+                        avatarUrl
+                    }`,
+                    { email: email.toLowerCase() }
+                );
+                setCurrentUser(result);
+            } catch (err) {
+                console.error("Error fetching current user:", err);
+            }
+        };
+
+        fetchUser();
+    }, [clerkUser?.id]);
+
+    // Check if current user is the author of this review
+    const isCurrentUsersReview = currentUser?.email?.toLowerCase() === review.email?.toLowerCase();
+
     const handleDelete = () => {
         Alert.alert(
             "Ta bort recension",
@@ -27,7 +65,9 @@ export default function ReviewsCard({review, isLast, onDelete}: ReviewsCardProps
             [
                 {text: "Avbryt", style: "cancel"},
                 {
-                    text: "Ta bort", style: "destructive", onPress: async () => {
+                    text: "Ta bort",
+                    style: "destructive",
+                    onPress: async () => {
                         try {
                             await client.delete(review._id);
                             if (onDelete) onDelete(review._id); // notify parent
@@ -52,21 +92,20 @@ export default function ReviewsCard({review, isLast, onDelete}: ReviewsCardProps
                 />
 
                 <View className="flex-1">
-
                     {/* Header: Name + Date + Delete */}
-                    <View className="flex-row justify-between items-center ">
-                        <View className={'flex flex-col gap-2 mt-3' }>
-                            <Text className="text-base font-bold text-black dark:text-white ">
+                    <View className="flex-row justify-between items-center">
+                        <View className={'flex flex-col gap-2 mt-3'}>
+                            <Text className="text-base font-bold text-black dark:text-white">
                                 {review.name}
                             </Text>
                             {/* Review text */}
-                            <Text className="text-sm text-gray-700 dark:text-gray-300 mb-6 ">
+                            <Text className="text-sm text-gray-700 dark:text-gray-300 mb-6">
                                 {review.review}
                             </Text>
                         </View>
 
                         {/* Rating */}
-                        <View className="flex-col items-center mb-5 ">
+                        <View className="flex-col items-center mb-5">
                             <StarRatingDisplay
                                 rating={review.rating}
                                 starSize={14}
@@ -77,15 +116,15 @@ export default function ReviewsCard({review, isLast, onDelete}: ReviewsCardProps
                                 <Text className="text-xs text-gray-500 dark:text-gray-400">
                                     {formatReviewDate(review.date)}
                                 </Text>
-                                <TouchableOpacity onPress={handleDelete}>
-                                    <Trash2 size={16} color={'red'}/>
-                                </TouchableOpacity>
+                                {/* Only show delete icon if it's the current user's review */}
+                                {isCurrentUsersReview && (
+                                    <TouchableOpacity onPress={handleDelete}>
+                                        <Trash2 size={16} color={'red'}/>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </View>
                     </View>
-
-
-
                 </View>
             </View>
 

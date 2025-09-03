@@ -123,7 +123,7 @@ const CategoryDetails = () => {
 
     // Current user
     const [currentUser, setCurrentUser] = useState<any>(null);
-    const { user } = useUser();
+    const {user} = useUser();
 
     useEffect(() => {
         if (!user) return;
@@ -143,7 +143,7 @@ const CategoryDetails = () => {
           email,
           avatarUrl
         }`,
-                    { email: email.toLowerCase() }
+                    {email: email.toLowerCase()}
                 );
                 setCurrentUser(result);
             } catch (err) {
@@ -227,27 +227,29 @@ const CategoryDetails = () => {
     };
 
     const handleBooking = async () => {
-        try {
-            const newBooking = {
-                categoryId: id,
-                coverImage,
-                title,
-                bookedAt: new Date().toISOString(),
-                status: "in progress",
-                name: "Kundens Namn",
-                totalAmount: 250,
-            };
+        // try {
+        //     const newBooking = {
+        //         categoryId: id,
+        //         coverImage,
+        //         title,
+        //         bookedAt: new Date().toISOString(),
+        //         status: "in progress",
+        //         name: "Kundens Namn",
+        //         totalAmount: 250,
+        //     };
+        //
+        //     const existingData = await AsyncStorage.getItem("bookingList");
+        //     const existingList = existingData ? JSON.parse(existingData) : [];
+        //     const updatedList = [newBooking, ...existingList];
+        //
+        //     await AsyncStorage.setItem("bookingList", JSON.stringify(updatedList));
+        //     Alert.alert("Success", "Din bokning har sparats!");
+        // } catch (error) {
+        //     console.error("Booking error:", error);
+        //     Alert.alert("Fel", "Det gick inte att spara bokningen.");
+        // }
 
-            const existingData = await AsyncStorage.getItem("bookingList");
-            const existingList = existingData ? JSON.parse(existingData) : [];
-            const updatedList = [newBooking, ...existingList];
-
-            await AsyncStorage.setItem("bookingList", JSON.stringify(updatedList));
-            Alert.alert("Success", "Din bokning har sparats!");
-        } catch (error) {
-            console.error("Booking error:", error);
-            Alert.alert("Fel", "Det gick inte att spara bokningen.");
-        }
+        router.push("/(tabs)/bookingCalander");
     };
 
     return (
@@ -359,6 +361,7 @@ const CategoryDetails = () => {
                                 date: r.createdAt,
                                 rating: r.rating,
                                 review: r.comment,
+                                email: r.userEmail
                             }}
                             isLast={index === reviews.length - 1}
                             onDelete={(id) => setReviews(reviews.filter(r => r._id !== id))}
