@@ -7,6 +7,18 @@ import {userType} from "./user";
 import {serviceType} from "./service";
 import {bookingPeriodType} from "./bookingPeriod";
 import {reviewType} from "./review";
+import {bookingType} from "./booking";
 
 
-export const schemaTypes = [userType, providerType, bookingPeriodType, notificationType, notificationReadType, announcementType, categoryType, serviceType , reviewType]
+export const schemaTypes = [
+    userType,
+    providerType,
+    bookingPeriodType,
+    notificationType,
+    notificationReadType,
+    announcementType,
+    categoryType,
+    serviceType,
+    reviewType,
+    bookingType
+]

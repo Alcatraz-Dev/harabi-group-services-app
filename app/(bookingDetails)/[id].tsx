@@ -14,6 +14,8 @@ import BookingTimeline from "@/components/BookingTimeline";
 import BookingSummary from "@/components/BookingSummary";
 import ReviewModal from "@/components/ui/BottomSheetReview";
 import InvoiceBottomSheet from "@/components/ui/InvoiceBottomSheet";
+import {client} from "@/client";
+import {useUser} from "@clerk/clerk-expo";
 
 
 type BookingData = {
@@ -59,6 +61,38 @@ const BookingById = () => {
             </View>
         );
     }
+    // Current user
+    const [currentUser, setCurrentUser] = useState<any>(null);
+    const {user} = useUser();
+
+    useEffect(() => {
+        if (!user) return;
+
+        const email = user.emailAddresses?.[0]?.emailAddress;
+        if (!email) return;
+
+        const fetchUser = async () => {
+            try {
+                // Use lower-case email to avoid case mismatch
+                const result = await client.fetch(
+                    `*[_type == "user" && lower(email) == $email][0]{
+          _id,
+          fullName,
+          firstName,
+          lastName,
+          email,
+          avatarUrl
+        }`,
+                    {email: email.toLowerCase()}
+                );
+                setCurrentUser(result);
+            } catch (err) {
+                console.error("Error fetching current user:", err);
+            }
+        };
+
+        fetchUser();
+    }, [user?.id]); // dependency is Clerk user ID
     useEffect(() => {
         const loadBookingData = async () => {
             try {
@@ -114,6 +148,63 @@ const BookingById = () => {
 
     const handleLeaveReview = () => {
         setModalVisible(true);
+    };
+    const {id, title, coverImage, description, providerId} = useLocalSearchParams();
+    const [provider, setProvider] = useState<any>(null);
+    const [reviews, setReviews] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (!providerId) return;
+        const query = `*[_type == "provider" && _id == $id][0]{
+      _id,
+      name,
+      slug,
+      description,
+      avatar { asset->{ url } },
+      role,
+      phoneNumber,
+      whatsappNumber
+    }`;
+        client.fetch(query, {id: providerId}).then(setProvider);
+    }, [providerId]);
+    const handleSubmitReview = async (rating: number, comment: string) => {
+        if (!currentUser) {
+            Alert.alert("Fel", "Användarinformation saknas.");
+            return;
+        }
+
+        try {
+            const existingReview = await client.fetch(
+                `*[_type == "review" && userEmail == $email && category._ref == $categoryId][0]`,
+                {email: currentUser.email, categoryId: id}
+            );
+
+            if (existingReview) {
+                Alert.alert("Obs!", "Du har redan lämnat en recension för denna tjänst.");
+                return;
+            }
+
+            const newReview = {
+                _type: "review",
+                userEmail: currentUser.email,
+                userName: currentUser.fullName || currentUser.firstName || "Användare",
+                rating,
+                comment,
+                category: {_type: "reference", _ref: id},
+                provider: {_type: "reference", _ref: providerId},
+                createdAt: new Date().toISOString(),
+                avatar: currentUser.avatarUrl || "https://avatar.iran.liara.run/public/boy",
+            };
+
+            await client.create(newReview);
+
+            Alert.alert("Tack!", "Din recension har sparats.");
+            setModalVisible(false);
+            setReviews([newReview, ...reviews]);
+        } catch (err) {
+            console.error(err);
+            Alert.alert("Fel", "Det gick inte att spara recensionen.");
+        }
     };
     const handleBookingAgain = async (bookingData: BookingData) => {
         try {
@@ -189,6 +280,7 @@ const BookingById = () => {
                             <ReviewModal
                                 visible={modalVisible}
                                 onClose={() => setModalVisible(false)}
+                                onSubmit={(rating, comment) => handleSubmitReview(rating, comment)}
                             />
 
                             {/* زر الحجز مجددًا */}

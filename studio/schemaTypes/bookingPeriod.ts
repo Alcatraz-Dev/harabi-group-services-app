@@ -30,6 +30,7 @@ export const bookingPeriodType = defineType({
             validation: (Rule) => Rule.required(),
         }),
 
+
         // 🔹 Slots for each date
         defineField({
             name: "slots",

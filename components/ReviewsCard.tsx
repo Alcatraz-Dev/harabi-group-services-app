@@ -88,7 +88,7 @@ export default function ReviewsCard({review, isLast, onDelete}: ReviewsCardProps
                 {/* Avatar */}
                 <Image
                     source={{uri: review.avatar || 'https://avatar.iran.liara.run/public/boy'}}
-                    className="w-10 h-10 rounded-full mt-5 mr-1"
+                    className="w-12 h-12 mt-3 mr-1 rounded-full border-2 border-border-gray-800 dark:border-white"
                 />
 
                 <View className="flex-1">

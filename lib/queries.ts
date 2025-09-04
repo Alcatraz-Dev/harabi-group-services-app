@@ -1,3 +1,4 @@
+import {client} from "@/client";
 
 export const categoriesQuery = `*[_type == "category"]{
   _id,
@@ -64,3 +65,51 @@ export const bookingPeriodsQuery = `
     }
   }
 `;
+
+
+
+export const getBookingSlotByDate = async (date: string) => {
+    return await client.fetch(
+        `*[_type == "bookingPeriod" && slots[].date == $date][0]{
+      _id,
+      title,
+      slots[date == $date]{
+        date,
+        place,
+        startTime,
+        endTime
+      }
+    }`,
+        { date }
+    );
+};
+export const getBookingPeriodById = async (id: string) => {
+    return await client.fetch(
+        `*[_type == "bookingPeriod" && _id == $id][0]{
+      title,
+      slots[]{
+        date,
+        place,
+        startTime,
+        endTime
+      }
+    }`,
+        { id }
+    );
+};
+export const getAllBookingPeriods = async () => {
+    return await client.fetch(`
+    *[_type == "bookingPeriod"]{
+      _id,
+      title,
+      colorTunisia,
+      colorSweden,
+      slots[]{ 
+        date,
+        place,
+        startTime,
+        endTime
+      }
+    }
+  `);
+};

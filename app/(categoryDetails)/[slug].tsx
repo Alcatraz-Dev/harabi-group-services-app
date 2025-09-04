@@ -25,13 +25,14 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import ReviewModal from "@/components/ui/BottomSheetReview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {client} from "@/client";
-import {providerQuery} from "@/lib/queries";
+import {useUser} from "@clerk/clerk-expo";
+
 
 
 const CategoryDetailsById = () => {
     const {slug, coverImage, title, description, icon, useCoverImageAsIcon, id, providerId,} = useLocalSearchParams();
     const router = useRouter();
-
+    const [reviews, setReviews] = useState<any[]>([]);
     const imageSource: ImageSourcePropType =
         typeof coverImage === 'string' ? {uri: coverImage} : (coverImage as ImageSourcePropType);
 
@@ -46,6 +47,77 @@ const CategoryDetailsById = () => {
         );
     }
 
+// Current user
+    const [currentUser, setCurrentUser] = useState<any>(null);
+    const {user} = useUser();
+
+    useEffect(() => {
+        if (!user) return;
+
+        const email = user.emailAddresses?.[0]?.emailAddress;
+        if (!email) return;
+
+        const fetchUser = async () => {
+            try {
+                // Use lower-case email to avoid case mismatch
+                const result = await client.fetch(
+                    `*[_type == "user" && lower(email) == $email][0]{
+          _id,
+          fullName,
+          firstName,
+          lastName,
+          email,
+          avatarUrl
+        }`,
+                    {email: email.toLowerCase()}
+                );
+                setCurrentUser(result);
+            } catch (err) {
+                console.error("Error fetching current user:", err);
+            }
+        };
+
+        fetchUser();
+    }, [user?.id]); // dependency is Clerk user ID
+    const handleSubmitReview = async (rating: number, comment: string) => {
+        if (!currentUser) {
+            Alert.alert("Fel", "Användarinformation saknas.");
+            return;
+        }
+
+        try {
+            const existingReview = await client.fetch(
+                `*[_type == "review" && userEmail == $email && category._ref == $categoryId][0]`,
+                {email: currentUser.email, categoryId: id}
+            );
+
+            if (existingReview) {
+                Alert.alert("Obs!", "Du har redan lämnat en recension för denna tjänst.");
+                return;
+            }
+
+            const newReview = {
+                _type: "review",
+                userEmail: currentUser.email,
+                userName: currentUser.fullName || currentUser.firstName || "Användare",
+                rating,
+                comment,
+                category: {_type: "reference", _ref: id},
+                provider: {_type: "reference", _ref: providerId},
+                createdAt: new Date().toISOString(),
+                avatar: currentUser.avatarUrl || "https://avatar.iran.liara.run/public/boy",
+            };
+
+            await client.create(newReview);
+
+            Alert.alert("Tack!", "Din recension har sparats.");
+            setModalVisible(false);
+            setReviews([newReview, ...reviews]);
+        } catch (err) {
+            console.error(err);
+            Alert.alert("Fel", "Det gick inte att spara recensionen.");
+        }
+    };
     const imageScale = useSharedValue(0.85);
     const imageOpacity = useSharedValue(0);
     const overlayOpacity = useSharedValue(0);
@@ -147,11 +219,22 @@ const CategoryDetailsById = () => {
 
     const handleShare = async () => {
         try {
-            await Share.share({
+            const result = await Share.share({
                 message: `Kolla in den här tjänsten: ${title}`,
             });
+
+            // Optional: handle different outcomes
+            if (result.action === Share.sharedAction) {
+                if (result.activityType) {
+                    console.log("Shared with activity type:", result.activityType);
+                } else {
+                    console.log("Service shared successfully!");
+                }
+            } else if (result.action === Share.dismissedAction) {
+                console.log("Share dismissed");
+            }
         } catch (error) {
-            Alert.alert('Fel', 'Det gick inte att dela tjänsten.');
+            Alert.alert("Fel", "Det gick inte att dela tjänsten.");
         }
     };
 
@@ -160,30 +243,43 @@ const CategoryDetailsById = () => {
         setModalVisible(true);
     };
 
-    const handleBooking = async () => {
-        try {
-            const newBooking = {
+    // const handleBooking = async () => {
+    //     try {
+    //         const newBooking = {
+    //             id,
+    //             coverImage,
+    //             title,
+    //             bookedAt: new Date().toISOString(),
+    //             status: 'in progress',
+    //             name: 'Kundens Namn',
+    //             totalAmount: 250,
+    //         };
+    //
+    //         const existingData = await AsyncStorage.getItem('bookingList');
+    //         const existingList = existingData ? JSON.parse(existingData) : [];
+    //
+    //         const updatedList = [newBooking, ...existingList];
+    //
+    //         await AsyncStorage.setItem('bookingList', JSON.stringify(updatedList));
+    //
+    //         Alert.alert('Success', 'Din bokning har sparats!');
+    //     } catch (error) {
+    //         console.error('Booking error:', error);
+    //         Alert.alert('Fel', 'Det gick inte att spara bokningen.');
+    //     }
+    // };
+    const handleBooking = () => {
+        // بدل الحفظ المباشر، نرسل المستخدم لصفحة تأكيد
+        router.push({
+            //@ts-ignore
+            pathname: `/(bookingCalander)/${id}`, // صفحة ديناميكية حسب slug/id
+            params: {
                 id,
-                coverImage,
                 title,
-                bookedAt: new Date().toISOString(),
-                status: 'in progress',
-                name: 'Kundens Namn',
-                totalAmount: 250,
-            };
-
-            const existingData = await AsyncStorage.getItem('bookingList');
-            const existingList = existingData ? JSON.parse(existingData) : [];
-
-            const updatedList = [newBooking, ...existingList];
-
-            await AsyncStorage.setItem('bookingList', JSON.stringify(updatedList));
-
-            Alert.alert('Success', 'Din bokning har sparats!');
-        } catch (error) {
-            console.error('Booking error:', error);
-            Alert.alert('Fel', 'Det gick inte att spara bokningen.');
-        }
+                coverImage,
+                price: 250,
+            },
+        });
     };
     return (
         <View className="flex-1 bg-white dark:bg-neutral-900">
@@ -282,11 +378,24 @@ const CategoryDetailsById = () => {
 
                 <View className="h-[1px] bg-neutral-200 dark:bg-neutral-700 my-3"/>
 
-                {/* Reviews */}
+                {/* Reviews list */}
                 <View className="my-6 px-2">
-
-                    <ReviewsCard/>
-
+                    {reviews.map((r, index) => (
+                        <ReviewsCard
+                            key={index}
+                            review={{
+                                _id: r._id,
+                                name: r.userName || "Användare",
+                                avatar: r.avatar || "https://avatar.iran.liara.run/public/boy",
+                                date: r.createdAt,
+                                rating: r.rating,
+                                review: r.comment,
+                                email: r.userEmail
+                            }}
+                            isLast={index === reviews.length - 1}
+                            onDelete={(id) => setReviews(reviews.filter(r => r._id !== id))}
+                        />
+                    ))}
                 </View>
 
             </ScrollView>
@@ -303,6 +412,7 @@ const CategoryDetailsById = () => {
                     <ReviewModal
                         visible={modalVisible}
                         onClose={() => setModalVisible(false)}
+                        onSubmit={(rating, comment) => handleSubmitReview(rating, comment)}
                     />
 
                     {/* Booking Button */}

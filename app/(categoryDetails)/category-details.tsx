@@ -178,7 +178,20 @@ const CategoryDetails = () => {
 
     const handleShare = async () => {
         try {
-            await Share.share({message: `Kolla in den här tjänsten: ${title}`});
+            const result = await Share.share({
+                message: `Kolla in den här tjänsten: ${title}`,
+            });
+
+            // Optional: handle different outcomes
+            if (result.action === Share.sharedAction) {
+                if (result.activityType) {
+                    console.log("Shared with activity type:", result.activityType);
+                } else {
+                    console.log("Service shared successfully!");
+                }
+            } else if (result.action === Share.dismissedAction) {
+                console.log("Share dismissed");
+            }
         } catch (error) {
             Alert.alert("Fel", "Det gick inte att dela tjänsten.");
         }
@@ -226,30 +239,19 @@ const CategoryDetails = () => {
         }
     };
 
-    const handleBooking = async () => {
-        // try {
-        //     const newBooking = {
-        //         categoryId: id,
-        //         coverImage,
-        //         title,
-        //         bookedAt: new Date().toISOString(),
-        //         status: "in progress",
-        //         name: "Kundens Namn",
-        //         totalAmount: 250,
-        //     };
-        //
-        //     const existingData = await AsyncStorage.getItem("bookingList");
-        //     const existingList = existingData ? JSON.parse(existingData) : [];
-        //     const updatedList = [newBooking, ...existingList];
-        //
-        //     await AsyncStorage.setItem("bookingList", JSON.stringify(updatedList));
-        //     Alert.alert("Success", "Din bokning har sparats!");
-        // } catch (error) {
-        //     console.error("Booking error:", error);
-        //     Alert.alert("Fel", "Det gick inte att spara bokningen.");
-        // }
 
-        router.push("/(tabs)/bookingCalander");
+    const handleBooking = () => {
+        // بدل الحفظ المباشر، نرسل المستخدم لصفحة تأكيد
+        router.push({
+            //@ts-ignore
+            pathname: `/(confirmBooking)/${id}`, // صفحة ديناميكية حسب slug/id
+            params: {
+                id,
+                title,
+                coverImage,
+                price: 250,
+            },
+        });
     };
 
     return (
