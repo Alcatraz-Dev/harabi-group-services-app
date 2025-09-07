@@ -103,7 +103,8 @@
     "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/83329e3e-7a9d-4d55-adc5-d4a448d99188"
-    }
+    },
+    "owner": "alcatrazdev"
   },
   "extra": {
     "router": {},
