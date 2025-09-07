@@ -32,15 +32,12 @@
         "foregroundImage": "./assets/icons/adaptive-icon.png",
         "backgroundImage": "./assets/icons/adaptive-icon.png",
         "monochromeImage": "./assets/icons/adaptive-icon.png",
-        "backgroundColor": "#ffffff",
-        "permissions": [
-          "NOTIFICATIONS",
-          "NOTIFICATIONS"
-        ]
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "NOTIFICATIONS"
       ],
       "package": "com.alcatrazdev.harabigroupservices"
     },
@@ -84,16 +81,7 @@
     "experiments": {
       "typedRoutes": true
     },
-    "expo": {
-      "extra": {
-        "eas": {
-          "projectId": "6f084bfe-2f83-4507-a7fc-04e12d697e22"
-        }
-      },
-      "updates": {
-        "fallbackToCacheTimeout": 0
-      }
-    },
+
     "extra": {
       "router": {},
       "eas": {
